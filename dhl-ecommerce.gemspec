@@ -1,7 +1,7 @@
 require "dhl/ecommerce/version"
 
 Gem::Specification.new do |s|
-  s.name          = "dhl-ecommerce-ruby"
+  s.name          = "dhl-ecommerce"
   s.version       = DHL::Ecommerce::VERSION
   s.authors       = ["Francois Deschenes"]
   s.email         = ["francois@meowbox.com"]
