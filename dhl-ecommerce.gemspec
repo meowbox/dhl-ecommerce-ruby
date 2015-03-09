@@ -20,6 +20,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency "vcr"
   s.add_development_dependency "webmock"
 
+  s.add_dependency "builder"
   s.add_dependency "faraday"
   s.add_dependency "faraday_middleware"
   s.add_dependency "hashie", "~> 2.0.0"

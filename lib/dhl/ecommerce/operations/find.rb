@@ -5,7 +5,7 @@ module DHL
         module ClassMethods
           def find(id)
             attributes = DHL::Ecommerce.request :get, "https://api.dhlglobalmail.com/v1/#{resource_name.downcase}s/#{id}"
-            new(attributes[resource_name])
+            new attributes[resource_name]
           end
         end
 

@@ -6,16 +6,20 @@ module DHL
 
       attr_reader :id, :account_id, :name, :address_1, :address_2, :city, :state, :postal_code, :country, :email, :contact, :phone, :fax
 
-      def initialize(attributes)
-        @id = attributes["Pickup"].to_i
-        @account_id = attributes["Account"].to_i
-        @name = attributes["PickupName"]
-        @address_1 = attributes["Address1"]
-        @address_2 = attributes["Address2"]
+      def initialize(attributes = {})
+        super attributes
+
+        unless attributes.empty?
+          @id = attributes[:pickup].to_i if attributes[:pickup]
+          @account_id = attributes[:account].to_i if attributes[:account]
+          @name = attributes[:pickup_name] if attributes[:pickup_name]
+          @address_1 = attributes[:address1] if attributes[:address1]
+          @address_2 = attributes[:address2] if attributes[:address2]
+        end
       end
 
       def account
-        DHL::Ecommerce::Account.find account_id
+        @account ||= DHL::Ecommerce::Account.find(account_id)
       end
     end
   end

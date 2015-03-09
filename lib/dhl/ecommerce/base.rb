@@ -4,7 +4,7 @@ module DHL
       def initialize(attributes = {})
         attributes.each do |attribute, value|
           instance_variable_set "@#{attribute}", value if respond_to? attribute
-        end
+        end unless attributes.empty?
       end
 
       private

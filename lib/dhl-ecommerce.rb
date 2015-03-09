@@ -1,3 +1,4 @@
+require "builder"
 require "faraday"
 require "faraday_middleware"
 require "faraday_middleware/response/rashify"
@@ -17,8 +18,10 @@ require_relative "dhl/ecommerce/operations/list"
 require_relative "dhl/ecommerce/base"
 require_relative "dhl/ecommerce/account"
 require_relative "dhl/ecommerce/event"
+require_relative "dhl/ecommerce/label"
 require_relative "dhl/ecommerce/location"
 require_relative "dhl/ecommerce/product"
+require_relative "dhl/ecommerce/standard_address"
 
 # Version
 require_relative "dhl/ecommerce/version"
@@ -57,7 +60,6 @@ module DHL
       response.body.response.data
     end
 
-    private
     private
       def self.client
         @client ||= Faraday.new url: "https://api.dhlglobalmail.com/v1/", headers: { accept: "application/xml", content_type: "application/xml;charset=UTF-8" } do |c|
