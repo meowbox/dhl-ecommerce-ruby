@@ -1,3 +1,5 @@
+$:.push "#{File.expand_path("..", __FILE__)}/lib"
+
 require "dhl/ecommerce/version"
 
 Gem::Specification.new do |s|

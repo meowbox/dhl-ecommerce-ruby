@@ -7,24 +7,25 @@ require "multi_xml"
 require "rash"
 
 # Errors
-require_relative "dhl/ecommerce/errors/base_error"
-require_relative "dhl/ecommerce/errors/authentication_error"
+require "dhl/ecommerce/errors/base_error"
+require "dhl/ecommerce/errors/authentication_error"
+require "dhl/ecommerce/errors/validation_error"
 
 # Operations
-require_relative "dhl/ecommerce/operations/find"
-require_relative "dhl/ecommerce/operations/list"
+require "dhl/ecommerce/operations/find"
+require "dhl/ecommerce/operations/list"
 
 # Resources
-require_relative "dhl/ecommerce/base"
-require_relative "dhl/ecommerce/account"
-require_relative "dhl/ecommerce/event"
-require_relative "dhl/ecommerce/label"
-require_relative "dhl/ecommerce/location"
-require_relative "dhl/ecommerce/product"
-require_relative "dhl/ecommerce/standard_address"
+require "dhl/ecommerce/base"
+require "dhl/ecommerce/account"
+require "dhl/ecommerce/event"
+require "dhl/ecommerce/label"
+require "dhl/ecommerce/location"
+require "dhl/ecommerce/product"
+require "dhl/ecommerce/standard_address"
 
 # Version
-require_relative "dhl/ecommerce/version"
+require "dhl/ecommerce/version"
 
 module DHL
   module Ecommerce
@@ -34,16 +35,22 @@ module DHL
     @username = ENV["DHL_ECOMMERCE_USERNAME"]
 
     class << self
-      attr_accessor :access_token, :client_id, :password, :username
+      attr_accessor :client_id
+      attr_writer :access_token, :password, :username
 
       def configure
         yield self
       end
     end
 
+    def self.access_token
+      # TODO This needs better error handling.
+      @access_token ||= client.get("https://api.dhlglobalmail.com/v1/auth/access_token", username: @username, password: @password, state: Time.now.to_i).body.response.data[:access_token]
+    end
+
     def self.request(method, url, &block)
       client.params = {
-        access_token: access_token,
+        access_token: self.access_token,
         client_id: client_id
       }
 
@@ -53,7 +60,11 @@ module DHL
       when 400
         case response.body.response.meta.error.error_type
         when "INVALID_CLIENT_ID", "INVALID_TOKEN"
-          throw AuthenticationError.new response.body.response.meta.error.error_message, response
+          throw Errors::AuthenticationError.new response.body.response.meta.error.error_message, response
+        when "VALIDATION_ERROR"
+          throw Errors::ValidationError.new response.body.response.meta.error.error_message, response
+        else
+          throw Errors::BaseError.new response.body.response.meta.error.error_message, response
         end
       end
 
@@ -63,9 +74,9 @@ module DHL
     private
       def self.client
         @client ||= Faraday.new url: "https://api.dhlglobalmail.com/v1/", headers: { accept: "application/xml", content_type: "application/xml;charset=UTF-8" } do |c|
-          c.adapter :net_http
           c.response :rashify
           c.response :xml, :content_type => /\bxml$/
+          c.adapter :net_http
         end
       end
   end
