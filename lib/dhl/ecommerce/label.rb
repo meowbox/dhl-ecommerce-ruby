@@ -1,8 +1,8 @@
 module DHL
   module Ecommerce
     class Label < Base
-      attr_accessor :customer_confirmation_number, :location_id, :product_id, :service_endorsement, :reference, :batch, :mail_type, :facility, :expected_ship_date, :weight, :consignee_address, :return_address, :service
-      attr_reader :id, :service_level, :service_type, :image, :impb
+      attr_accessor :customer_confirmation_number, :service_endorsement, :reference, :batch, :mail_type, :facility, :expected_ship_date, :weight, :consignee_address, :return_address, :service
+      attr_reader :id, :location_id, :product_id, :events, :service_type, :file, :impb
 
       FACILITIES = {
         auburn: "USSEA1",
@@ -47,9 +47,10 @@ module DHL
         return_service: 4
       }
 
-      SERVICE_LEVELS = {
-        ground: 'GRD'
-      }
+      def location_id=(location_id)
+        @location = nil
+        @location_id = location_id
+      end
 
       def location
         @location ||= DHL::Ecommerce::Location.find location_id
@@ -60,8 +61,9 @@ module DHL
         @location_id = location.id
       end
 
-      def pdf
-        return nil unless image
+      def product_id=(product_id)
+        @product = nil
+        @product_id = product_id
       end
 
       def product
@@ -74,50 +76,61 @@ module DHL
       end
 
       def self.create(attributes)
-        self.create_in_batches([attributes]).first
+        array = attributes.is_a? Array
+        attributes = [attributes] unless array
+
+        labels = self.create_in_batches attributes
+
+        array ? labels : labels.first
       end
 
-      def self.create_in_batches(attributes)
-        attributes.group_by do |value| value[:location_id] end.each.collect do |location_id, location_attributes|
-          url = "https://api.dhlglobalmail.com/v1/#{self.resource_name.downcase}/US/#{location_id}/image"
+      def self.find(id)
+        attributes = DHL::Ecommerce.request :get, "https://api.dhlglobalmail.com/v1/mailitems/track" do |request|
+          request.params[:number] = id
+        end
 
-          location_attributes.each_slice(500).collect do |slice|
-            labels = slice.map do |slice_attributes|
-              self.new slice_attributes
-            end
+        attributes[:mail_items][:mail_item] = attributes[:mail_items][:mail_item].first if attributes[:mail_items][:mail_item].is_a? Array
 
-            xml = Builder::XmlMarkup.new
-            xml.instruct! :xml, version: "1.1", encoding: "UTF-8"
-            xml.EncodeRequest do
-              xml.CustomerId location_id
-              xml.BatchRef DateTime.now.strftime("%Q")
-              xml.HalfOnError false
-              xml.RejectAllOnError true
-              xml.MpuList do
-                xml << labels.map do |label| label.send :xml end.join
-              end
-            end
+        new attributes[:mail_items][:mail_item]
+      end
 
-            response = DHL::Ecommerce.request :post, url do |r|
-              r.body = xml.target!
-            end
+      def initialize(attributes = {})
+        super attributes
 
-            response[:mpu_list][:mpu] = [response[:mpu_list][:mpu]] unless response[:mpu_list][:mpu].is_a? Array
+        unless attributes.empty?
+          if attributes[:mail]
+            @id = attributes[:mail][:mailIdentifier] if attributes[:mail][:mailIdentifier]
+            @weight = attributes[:mail][:weight] if attributes[:mail][:weight]
+            @product_id = attributes[:mail][:product_id] if attributes[:mail][:product_id]
+            @reference = attributes[:mail][:customer_reference] if attributes[:mail][:customer_reference]
+            @batch = attributes[:mail][:batch_reference] if attributes[:mail][:batch_reference]
+            @impb = attributes[:mail][:intelligent_mail_barcode] if attributes[:mail][:intelligent_mail_barcode]
+            @customer_confirmation_number = attributes[:mail][:customer_confirmation_number] if attributes[:mail][:customer_confirmation_number]
 
-            labels.zip(response[:mpu_list][:mpu]).map do |label, label_response|
-              label.instance_variable_set :@id, label_response[:mail_item_id].to_i if label_response[:mail_item_id]
-              label.instance_variable_set :@image, label_response[:label_image] if label_response[:label_image]
+            @services = :delivery_confirmation if attributes[:mail][:delivery_confirmation_flag] == '1'
+            @services = :signature_confirmation if attributes[:mail][:signature_confirmation_flag] == '1'
+          end
 
-              if label_response[:label_detail]
-                label.instance_variable_set :@impb, label_response[:label_detail][:impb][:value].to_i if label_response[:label_detail][:impb] && label_response[:label_detail][:impb][:value]
-                label.instance_variable_set :@service_level, SERVICE_LEVELS.key(label_response[:label_detail][:service_level]) if label_response[:label_detail][:service_level]
-                label.instance_variable_set :@service_type, label_response[:label_detail][:service_type_code].to_i if label_response[:label_detail][:service_type_code]
-              end
+          if attributes[:pickup]
+            @location_id = attributes[:pickup][:pickup] if attributes[:pickup][:pickup]
+          end
 
-              label
+          if attributes[:recipient]
+            @consignee_address = StandardAddress.new attributes[:recipient]
+          end
+
+          if attributes[:events]
+            @events = []
+
+            attributes[:events][:event] = [attributes[:events][:event]] unless attributes[:events][:event].is_a? Array
+            attributes[:events][:event].each do |event_attributes|
+              event = TrackedEvent.new event_attributes
+              event.instance_variable_set :@event, Event.new(event_attributes)
+
+              @events << event
             end
           end
-        end.flatten
+        end
       end
 
       private
@@ -167,6 +180,8 @@ module DHL
 
           xml.Weight do
             xml.Value weight
+
+            # TODO Add support for other units supported by DHL e-Commerce.
             xml.Unit :lb.to_s.upcase
           end
 
@@ -176,6 +191,59 @@ module DHL
           xml.ExpectedShipDate (expected_ship_date || DateTime.now).strftime("%Y%m%d")
           xml.MailTypeCode MAIL_TYPES.fetch mail_type ? mail_type.downcase.to_sym : :parcel_select_machinable
         end
+      end
+
+      def self.create_in_batches(attributes)
+        attributes.group_by do |value| value[:location_id] end.each.collect do |location_id, location_attributes|
+          case DHL::Ecommerce.label_format
+          when :png, :image
+            url = "https://api.dhlglobalmail.com/v1/#{self.resource_name.downcase}/US/#{location_id}/image"
+          when :zpl
+            url = "https://api.dhlglobalmail.com/v1/#{self.resource_name.downcase}/US/#{location_id}/zpl"
+          end
+
+          location_attributes.each_slice(500).collect do |slice|
+            labels = slice.map do |slice_attributes|
+              new slice_attributes
+            end
+
+            xml = Builder::XmlMarkup.new
+            xml.instruct! :xml, version: "1.1", encoding: "UTF-8"
+            xml.EncodeRequest do
+              xml.CustomerId location_id
+              xml.BatchRef DateTime.now.strftime("%Q")
+              xml.HalfOnError false
+              xml.RejectAllOnError true
+              xml.MpuList do
+                xml << labels.map do |label| label.send :xml end.join
+              end
+            end
+
+            response = DHL::Ecommerce.request :post, url do |request|
+              request.body = xml.target!
+            end
+
+            response[:mpu_list][:mpu] = [response[:mpu_list][:mpu]] unless response[:mpu_list][:mpu].is_a? Array
+
+            labels.zip(response[:mpu_list][:mpu]).map do |label, label_response|
+              label.instance_variable_set :@id, label_response[:mail_item_id].to_i if label_response[:mail_item_id]
+
+              case DHL::Ecommerce.label_format
+              when :png, :image
+                label.instance_variable_set :@file, StringIO.new(Base64.decode64(label_response[:label_image])) if label_response[:label_image]
+              when :zpl
+                label.instance_variable_set :@file, StringIO.new(Base64.decode64(label_response[:label_zpl])) if label_response[:label_zpl]
+              end
+
+              if label_response[:label_detail]
+                label.instance_variable_set :@impb, Impb.new(label_response[:label_detail][:impb]) if label_response[:label_detail][:impb]
+                label.instance_variable_set :@service_type, label_response[:label_detail][:service_type_code].to_i if label_response[:label_detail][:service_type_code]
+              end
+
+              label
+            end
+          end
+        end.flatten
       end
     end
   end

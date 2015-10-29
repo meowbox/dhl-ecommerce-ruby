@@ -3,7 +3,13 @@ module DHL
     class Base
       def initialize(attributes = {})
         attributes.each do |attribute, value|
-          instance_variable_set "@#{attribute}", value if respond_to? attribute
+          next if attribute.to_sym == :class
+
+          if respond_to? "#{attribute}="
+            send "#{attribute}=", value
+          elsif respond_to?("#{attribute}")
+            instance_variable_set "@#{attribute}", value
+          end
         end unless attributes.empty?
       end
 

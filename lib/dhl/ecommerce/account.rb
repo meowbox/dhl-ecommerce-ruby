@@ -4,23 +4,26 @@ module DHL
       include DHL::Ecommerce::Operations::Find
       include DHL::Ecommerce::Operations::List
 
-      attr_reader :id, :name, :address_1, :address_2, :city, :state, :postal_code, :country, :email, :contact
+      attr_reader :id, :address, :email
 
       def initialize(attributes = {})
         super attributes
 
         unless attributes.empty?
           @id = attributes[:account].to_i if attributes[:account]
-          @name = attributes[:account_name] if attributes[:account_name]
-          @address_1 = attributes[:address1] if attributes[:address1]
-          @address_2 = attributes[:address2] if attributes[:address2]
+          @address = StandardAddress.new attributes
         end
       end
 
       def locations
-        response = DHL::Ecommerce.request :get, "https://api.dhlglobalmail.com/v1/{DHL::Ecommerce::Location.resource_name.downcase}s/#{id}/#{DHL::Ecommerce::Location.resource_name.downcase}s"
+        response = DHL::Ecommerce.request :get, "https://api.dhlglobalmail.com/v1/#{self.resource_name.downcase}s/#{id}/#{DHL::Ecommerce::Location.resource_name.downcase}s"
         response[self.resource_name]["#{DHL::Ecommerce::Location.resource_name}s"][DHL::Ecommerce::Location.resource_name] = [response[self.resource_name]["#{DHL::Ecommerce::Location.resource_name}s"][DHL::Ecommerce::Location.resource_name]] unless response[self.resource_name]["#{DHL::Ecommerce::Location.resource_name}s"][DHL::Ecommerce::Location.resource_name].is_a? Array
-        response[self.resource_name]["#{DHL::Ecommerce::Location.resource_name}s"].map { |attributes| DHL::Ecommerce::Location.new attributes }
+
+        response[self.resource_name]["#{DHL::Ecommerce::Location.resource_name}s"].map do |attributes|
+          location = DHL::Ecommerce::Location.new attributes
+          location.instance_variable_set :@account, self
+          location
+        end
       end
     end
   end

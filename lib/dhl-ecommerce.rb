@@ -19,10 +19,13 @@ require "dhl/ecommerce/operations/list"
 require "dhl/ecommerce/base"
 require "dhl/ecommerce/account"
 require "dhl/ecommerce/event"
+require "dhl/ecommerce/impb"
 require "dhl/ecommerce/label"
 require "dhl/ecommerce/location"
+require "dhl/ecommerce/manifest"
 require "dhl/ecommerce/product"
 require "dhl/ecommerce/standard_address"
+require "dhl/ecommerce/tracked_event"
 
 # Version
 require "dhl/ecommerce/version"
@@ -33,9 +36,10 @@ module DHL
     @client_id = ENV["DHL_ECOMMERCE_CLIENT_ID"]
     @password = ENV["DHL_ECOMMERCE_PASSWORD"]
     @username = ENV["DHL_ECOMMERCE_USERNAME"]
+    @label_format = :png
 
     class << self
-      attr_accessor :client_id
+      attr_accessor :client_id, :label_format
       attr_writer :access_token, :password, :username
 
       def configure
@@ -56,12 +60,14 @@ module DHL
 
       response = client.run_request method.downcase.to_sym, url, nil, nil, &block
 
+      puts response.to_yaml
+
       case response.status
       when 400
         case response.body.response.meta.error.error_type
-        when "INVALID_CLIENT_ID", "INVALID_TOKEN"
+        when "INVALID_CLIENT_ID", "INVALID_KEY", "INVALID_TOKEN", "INACTIVE_KEY"
           throw Errors::AuthenticationError.new response.body.response.meta.error.error_message, response
-        when "VALIDATION_ERROR"
+        when "VALIDATION_ERROR", "INVALID_FACILITY_CODE"
           throw Errors::ValidationError.new response.body.response.meta.error.error_message, response
         else
           throw Errors::BaseError.new response.body.response.meta.error.error_message, response
