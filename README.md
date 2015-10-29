@@ -67,7 +67,7 @@ consignee_address = DHL::Ecommerce::StandardAddress.new firm: "meowbox Inc.",
 # Create a single label.
 label = DHL::Ecommerce::Label.create consignee_address: consignee_address,
                                      facility: :auburn,
-                                     location_id: 5325183,
+                                     location_id: 6369,
                                      product_id: 83,
                                      weight: 1
 ```
