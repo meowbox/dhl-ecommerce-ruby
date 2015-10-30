@@ -7,8 +7,8 @@ Gem::Specification.new do |s|
   s.version       = DHL::Ecommerce::VERSION
   s.authors       = ["Francois Deschenes"]
   s.email         = ["francois@meowbox.com"]
-  s.description   = %q{}
-  s.summary       = %q{}
+  s.description   = %q{DHL eCommerce API Wrapper for Ruby}
+  s.summary       = %q{DHL eCommerce API Wrapper for Ruby}
   s.homepage      = "https://github.com/meowbox/dhl-ecommerce-ruby"
   s.license       = "MIT"
 

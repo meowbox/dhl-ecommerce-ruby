@@ -1,5 +1,6 @@
 # DHL eCommerce API Wrapper for Ruby
 
+[![Gem Version](https://badge.fury.io/rb/dhl-ecommerce.svg)](https://badge.fury.io/rb/dhl-ecommerce)
 [![Build Status](https://travis-ci.org/meowbox/dhl-ecommerce-ruby.svg)](https://travis-ci.org/meowbox/dhl-ecommerce-ruby)
 
 ## Installation
