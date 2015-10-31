@@ -202,7 +202,9 @@ module DHL
             url = "https://api.dhlglobalmail.com/v1/#{self.resource_name.downcase}/US/#{location_id}/zpl"
           end
 
-          location_attributes.each_slice(500).collect do |slice|
+          # DHL e-Commerce's documentation says they support creating 500 labels
+          # at once but as it turns out, they don't.
+          location_attributes.each_slice(1).collect do |slice|
             labels = slice.map do |slice_attributes|
               new slice_attributes
             end
