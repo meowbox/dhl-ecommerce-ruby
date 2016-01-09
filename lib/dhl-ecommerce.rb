@@ -60,8 +60,6 @@ module DHL
 
       response = client.run_request method.downcase.to_sym, url, nil, nil, &block
 
-      puts response.to_yaml
-
       case response.status
       when 400
         case response.body.response.meta.error.error_type
@@ -70,7 +68,7 @@ module DHL
         when "VALIDATION_ERROR", "INVALID_FACILITY_CODE"
           errors = response.body.response.data.mpu_list.mpu.error_list.error
           errors = [errors] unless errors.is_a? Array
-          
+
           raise Errors::ValidationError.new response.body.response.meta.error.error_message, response, errors
         else
           raise Errors::BaseError.new response.body.response.meta.error.error_message, response
