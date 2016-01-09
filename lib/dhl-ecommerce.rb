@@ -66,11 +66,14 @@ module DHL
       when 400
         case response.body.response.meta.error.error_type
         when "INVALID_CLIENT_ID", "INVALID_KEY", "INVALID_TOKEN", "INACTIVE_KEY"
-          throw Errors::AuthenticationError.new response.body.response.meta.error.error_message, response
+          raise Errors::AuthenticationError.new response.body.response.meta.error.error_message, response
         when "VALIDATION_ERROR", "INVALID_FACILITY_CODE"
-          throw Errors::ValidationError.new response.body.response.meta.error.error_message, response
+          errors = response.body.response.data.mpu_list.mpu.error_list.error
+          errors = [errors] unless errors.is_a? Array
+          
+          raise Errors::ValidationError.new response.body.response.meta.error.error_message, response, errors
         else
-          throw Errors::BaseError.new response.body.response.meta.error.error_message, response
+          raise Errors::BaseError.new response.body.response.meta.error.error_message, response
         end
       end
 
