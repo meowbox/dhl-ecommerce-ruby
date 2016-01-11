@@ -146,7 +146,7 @@ module DHL
 
           xml.PackageRef do
             xml.PrintFlag customer_confirmation_number.present?
-            xml.LabelText customer_confirmation_number
+            # xml.LabelText ""
           end
 
           xml.ConsigneeAddress do
