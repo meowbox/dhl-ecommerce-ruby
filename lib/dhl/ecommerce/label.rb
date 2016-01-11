@@ -2,7 +2,7 @@ module DHL
   module Ecommerce
     class Label < Base
       attr_accessor :customer_confirmation_number, :service_endorsement, :reference, :batch, :mail_type, :facility, :expected_ship_date, :weight, :consignee_address, :return_address, :service
-      attr_reader :id, :location_id, :product_id, :events, :service_type, :file, :impb
+      attr_reader :id, :location_id, :product_id, :events, :service_type, :impb
 
       FACILITIES = {
         auburn: "USSEA1",
@@ -75,6 +75,10 @@ module DHL
         @product_id = product.id
       end
 
+      def file
+        @base64_decoded_file ||= StringIO.new(Base64.decode64(@file))
+      end
+
       def self.create(attributes)
         array = attributes.is_a? Array
         attributes = [attributes] unless array
@@ -142,7 +146,7 @@ module DHL
 
           xml.PackageRef do
             xml.PrintFlag customer_confirmation_number.present?
-            # xml.LabelText ""
+            xml.LabelText customer_confirmation_number
           end
 
           xml.ConsigneeAddress do
@@ -232,9 +236,9 @@ module DHL
 
               case DHL::Ecommerce.label_format
               when :png, :image
-                label.instance_variable_set :@file, StringIO.new(Base64.decode64(label_response[:label_image])) if label_response[:label_image]
+                label.instance_variable_set :@file, label_response[:label_image] if label_response[:label_image]
               when :zpl
-                label.instance_variable_set :@file, StringIO.new(Base64.decode64(label_response[:label_zpl])) if label_response[:label_zpl]
+                label.instance_variable_set :@file, label_response[:label_zpl] if label_response[:label_zpl]
               end
 
               if label_response[:label_detail]
