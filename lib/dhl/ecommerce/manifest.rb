@@ -1,7 +1,7 @@
 module DHL
   module Ecommerce
     class Manifest < Base
-      attr_reader :id, :location_id, :file
+      attr_reader :id, :location_id
 
       def location_id=(location_id)
         @location = nil
@@ -12,6 +12,10 @@ module DHL
         @location ||= DHL::Ecommerce::Location.find location_id
       end
 
+      def file
+        @base64_decoded_file ||= StringIO.new(Base64.decode64(@file))
+      end
+
       def self.create(labels)
         labels.group_by(&:location_id).each.collect do |location_id, location_labels|
           closeout_id = DHL::Ecommerce.request :get, "https://api.dhlglobalmail.com/v1/#{DHL::Ecommerce::Location.resource_name.downcase}s/#{location_id}/closeout/id"
@@ -20,7 +24,7 @@ module DHL
             xml = Builder::XmlMarkup.new
             xml.instruct! :xml, version: "1.1", encoding: "UTF-8"
 
-            xml.ImbpList do
+            xml.ImpbList do
               slice_labels.each do |label|
                 xml.Impb do
                   xml.Construct label.impb.construct
@@ -40,14 +44,6 @@ module DHL
             new attributes.merge(location_id: location_id)
           end
         end.flatten
-      end
-
-      def initialize(attributes = {})
-        super attributes
-
-        unless attributes.empty?
-          @file = StringIO.new(Base64.decode64(attributes[:file])) if attributes[:file] unless attributes[:file].is_a? StringIO
-        end
       end
     end
   end
