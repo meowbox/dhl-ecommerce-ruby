@@ -76,7 +76,7 @@ module DHL
       end
 
       def file
-        @base64_decoded_file ||= StringIO.new(Base64.decode64(@file))
+        @base64_decoded_file ||= StringIO.new(DHL::Ecommerce.label_format == :zpl ? @file : Base64.decode64(@file))
       end
 
       def self.create(attributes)
