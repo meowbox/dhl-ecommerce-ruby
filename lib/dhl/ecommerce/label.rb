@@ -76,7 +76,7 @@ module DHL
       end
 
       def file
-        @base64_decoded_file ||= StringIO.new(Base64.decode64(@file))
+        @base64_decoded_file ||= StringIO.new(DHL::Ecommerce.label_format == :zpl ? @file : Base64.decode64(@file))
       end
 
       def self.create(attributes)
@@ -218,7 +218,7 @@ module DHL
             xml.EncodeRequest do
               xml.CustomerId location_id
               xml.BatchRef DateTime.now.strftime("%Q")
-              xml.HalfOnError false
+              xml.HaltOnError false
               xml.RejectAllOnError true
               xml.MpuList do
                 xml << labels.map do |label| label.send :xml end.join
