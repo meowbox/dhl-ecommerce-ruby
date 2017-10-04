@@ -49,7 +49,12 @@ module DHL
 
     def self.access_token
       # TODO This needs better error handling.
-      @access_token ||= client.get("https://api.dhlglobalmail.com/v1/auth/access_token", username: @username, password: @password, state: Time.now.to_i).body.response.data[:access_token]
+      response = @access_token ||= client.get("https://api.dhlglobalmail.com/v1/auth/access_token", username: @username, password: @password, state: Time.now.to_i).body.response
+      if( response.meta[:code].to_i < 200 || response.meta[:code].to_i > 299 )
+        throw "#{response.meta[:error][:error_type]} - #{response.meta[:error][:error_message]}"
+      else
+        response.data[:access_token]
+      end
     end
 
     def self.request(method, url, &block)

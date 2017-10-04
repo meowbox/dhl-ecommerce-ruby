@@ -23,9 +23,9 @@ Gem::Specification.new do |s|
   s.add_development_dependency "webmock"
 
   s.add_dependency "builder"
-  s.add_dependency "faraday"
-  s.add_dependency "faraday_middleware"
-  s.add_dependency "hashie", "~> 2.0.0"
+  s.add_dependency "faraday", "0.9.2"
+  s.add_dependency "faraday_middleware", "0.10.0"
+  s.add_dependency "hashie",  "~> 2.0.0"
   s.add_dependency "multi_xml"
-  s.add_dependency "rash"
+  s.add_dependency "rash", "0.4.0"
 end
